@@ -37,6 +37,15 @@ scattering_rules = {
     0b101010: (0b010101,)
 }
 
+reflective_rules = {
+    1: 8,
+    2: 16,
+    4: 32,
+    8: 1,
+    16: 2,
+    32: 4
+}
+
 def generate_lattice(shape: Tuple[int,int]):
     lattice = np.random.randint(0,64, size=shape).astype(np.uint8)
     return lattice
