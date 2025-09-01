@@ -1,19 +1,13 @@
 import numpy as np
 from vispy import app, scene
-from sandbox.lattice_gas import generate_lattice, update_lattice, index_to_cartesian
+from sandbox.lattice_gas import index_to_cartesian, simulate_lattice
 
 # ----------------------------
 # Simulation setup
 # ----------------------------
 N_rows, N_cols = 100, 100
 N_steps = 200
-lattice = generate_lattice((N_rows, N_cols))
-lattice = {site: value if value in [1,2,4,8,16,32] else 0 for site, value in lattice.items()}
-
-lattice_list = [lattice]
-for _ in range(N_steps):
-    lattice = update_lattice(lattice, N_rows, N_cols)
-    lattice_list.append(lattice)
+lattice_list, momenta, particle_numbers, spurious_c = simulate_lattice(N_rows, N_cols, N_steps)
 
 # ----------------------------
 # VisPy visualization
@@ -28,7 +22,7 @@ view.camera = scene.PanZoomCamera(aspect=1)
 view.camera.set_range(x=(0, N_cols), y=(0, N_rows))
 
 # Precompute coords
-coords = {site: index_to_cartesian(*site) for site in lattice_list[0].keys()}
+coords = {(i,j): index_to_cartesian(i, j) for i in range(N_rows) for j in range(N_cols) }
 
 # Markers for lattice points
 points = scene.visuals.Markers(parent=view.scene)
@@ -61,17 +55,19 @@ def draw_frame(idx):
     lattice = lattice_list[idx]
     shafts = []
     arrow_pairs = []
-    for site, value in lattice.items():
-        x, y = coords[site]
-        for k in range(6):
-            if (value >> k) & 1:
-                angle = angles[k]
-                dx = arrow_length * np.cos(angle)
-                dy = arrow_length * np.sin(angle)
-                dst = (x + dx, y + dy)
+    for i in range(lattice.shape[0]):
+        for j in range(lattice.shape[1]):
+            value = lattice[i, j]
+            x, y = coords[(i, j)]
+            for k in range(6):
+                if (value >> k) & 1:
+                    angle = angles[k]
+                    dx = arrow_length * np.cos(angle)
+                    dy = arrow_length * np.sin(angle)
+                    dst = (x + dx, y + dy)
 
-                shafts.extend([[x, y], dst])
-                arrow_pairs.append([x, y, dst[0], dst[1]])
+                    shafts.extend([[x, y], dst])
+                    arrow_pairs.append([x, y, dst[0], dst[1]])
 
     if shafts:
         pos = np.array(shafts, dtype=np.float32)
