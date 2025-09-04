@@ -16,12 +16,9 @@ lattice[90:,:,6] = 1
 lattice[lattice[:,:,6] == 1,:6] = 0
 lattice_list, momenta, particle_numbers, spurious_c = simulate_lattice(lattice, N_steps)
 
-# ----------------------------
-# VisPy visualization
-# ----------------------------
-angles = np.array([0, np.pi/3, 2*np.pi/3, np.pi, -2*np.pi/3, -np.pi/3])
-arrow_length = 0.25
-head_size = 1  # arrowhead size
+momenta = np.array(momenta)
+arrow_length = 0.5   # scale for arrow shafts
+arrow_size = 5.0     # arrowhead size
 
 canvas = scene.SceneCanvas(keys='interactive', show=True, bgcolor='white')
 view = canvas.central_widget.add_view()
@@ -29,8 +26,6 @@ view.camera = scene.PanZoomCamera(aspect=1)
 view.camera.set_range(x=(0, N_cols), y=(0, N_rows))
 
 # Precompute coords
-# second element in value tuple is if point is a boundary
-# Precompute coords and boundary flags
 coords = {(i, j): index_to_cartesian(i, j) for i in range(N_rows) for j in range(N_cols)}
 boundaries = {(i, j): lattice[i, j, 6] for i in range(N_rows) for j in range(N_cols)}
 
@@ -51,13 +46,13 @@ boundary_markers.set_data(
     symbol='x'
 )
 
-# Arrows for particles
+# Arrows for momenta
 arrow_node = scene.visuals.Arrow(
     pos=np.zeros((0, 2), dtype=np.float32),
     arrows=np.zeros((0, 4), dtype=np.float32),
     color='blue',
     arrow_color='blue',
-    arrow_size=5.0,
+    arrow_size=arrow_size,
     arrow_type='stealth',
     connect='segments',
     parent=view.scene
@@ -71,25 +66,25 @@ def update(ev):
     if not running:
         return
 
-    frame_idx = (frame_idx + 1) % len(lattice_list)
+    frame_idx = (frame_idx + 1) % momenta.shape[0]
     draw_frame(frame_idx)
 
 def draw_frame(idx):
-    lattice = lattice_list[idx]
     shafts = []
     arrow_pairs = []
-    for i in range(lattice.shape[0]):
-        for j in range(lattice.shape[1]):
-            value = lattice[i, j]
+
+    # go through each lattice site
+    for i in range(N_rows):
+        for j in range(N_cols):
             x, y = coords[(i, j)]
-            for k in range(6):
-                if value[k]:
-                    angle = angles[k]
-                    dx = arrow_length * np.cos(angle)
-                    dy = arrow_length * np.sin(angle)
-                    dst = (x + dx, y + dy)
-                    shafts.extend([[x, y], dst])
-                    arrow_pairs.append([x, y, dst[0], dst[1]])
+            dx, dy = momenta[idx, i, j]  # vector
+            if dx == 0 and dy == 0:
+                continue
+
+            dst = (x + dx * arrow_length, y + dy * arrow_length)
+
+            shafts.extend([[x, y], dst])
+            arrow_pairs.append([x, y, dst[0], dst[1]])
 
     if shafts:
         pos = np.array(shafts, dtype=np.float32)
@@ -108,10 +103,10 @@ def on_key(event):
     if event.key == 'Space':
         running = not running
     elif event.key == 'Right':
-        frame_idx = (frame_idx + 1) % len(lattice_list)
+        frame_idx = (frame_idx + 1) % momenta.shape[0]
         draw_frame(frame_idx)
     elif event.key == 'Left':
-        frame_idx = (frame_idx - 1) % len(lattice_list)
+        frame_idx = (frame_idx - 1) % momenta.shape[0]
         draw_frame(frame_idx)
     elif event.key == 'R':
         frame_idx = 0

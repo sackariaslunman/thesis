@@ -24,7 +24,6 @@ def bit_index_to_direction(i: int) -> np.ndarray:
         np.sin(2 * np.pi * i / 6),
     ])
 
-
 bit_directions = np.array([bit_index_to_direction(i) for i in range(6)])
 
 scattering_rules = {
@@ -82,6 +81,12 @@ def resolve_reflections(lattice: np.ndarray) -> np.ndarray:
 
     return new_lattice
 
+def unsqueeze(arr, axis=-1):
+    return np.expand_dims(arr, axis)
+
+def compute_momentum(lattice: np.ndarray) -> np.ndarray:
+    return (unsqueeze(lattice[:,:,:6]) * bit_directions).sum(axis=-2)
+
 def simulate_lattice(lattice: np.ndarray, N_steps: int):
     lattice_time_series = np.zeros((N_steps * 3 + 1, *lattice.shape), dtype=bool)
     lattice_time_series[0,:,:] = lattice
@@ -99,5 +104,8 @@ def simulate_lattice(lattice: np.ndarray, N_steps: int):
         
         lattice = resolve_reflections(lattice)
         lattice_time_series[3*t+3,:,:] = lattice
+
+        momentum = compute_momentum(lattice)
+        momenta.append(momentum)
     
     return lattice_time_series, momenta, particle_numbers, spurious_c
